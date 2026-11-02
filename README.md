@@ -200,10 +200,8 @@ AQM-Sabesan/
 ├── python-logger/
 │   └── aqm_ble_data_logger.py
 ├── screenshots/
-│   ├── 01_BLE_Temperature_Humidity.png
-│   ├── 02_Sampling_Interval.png
-│   ├── 03_BLE_Alert.png
-│   └── 04_Serial_Monitor.png
+│   ├── 01_BLE_Temperature_Humidity_Alert.png
+│   ├── 02_Sampling_Interval.png   
 └── README.md
 ```
 
