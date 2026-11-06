@@ -1,213 +1,72 @@
-# ESP32 Air Quality Monitor with BLE
+# ESP32 Air Quality Monitor
 
-An ESP32-based air-monitoring prototype developed as a practical assessment for the **Engineering Intern – Air Quality Monitor** position at **Aerion Technology Labs Pvt. Ltd.**
+An ESP32-based environmental monitoring prototype developed as part of the Engineering Intern practical task for Aerion Technology Labs Pvt. Ltd.
 
-The project demonstrates time-based simulated temperature and humidity readings, five-sample moving-average filtering, Bluetooth Low Energy (BLE) communication, a configurable sampling interval, threshold alerts, and Python-based CSV logging.
+## Project Overview
 
-> **Measurement note:** This implementation does not use a physical I2C sensor. Both temperature and humidity are simulated in firmware. The ESP32 obtains the current time through NTP and uses the time of day as an input to a mathematical daily-cycle model. The generated values are illustrative, not actual sensor measurements or live weather data.
+This project uses an ESP32-WROOM-32 to generate simulated temperature and humidity readings and transmit them through Bluetooth Low Energy (BLE).
 
-## 1. Selected Track and Hardware
+### Implemented Features
 
-- **Selected track:** Track A – Physical ESP32 board
-- **Board:** ESP32-WROOM-32 development board
-- **Development framework:** Arduino framework
-- **Development environment:** Arduino IDE
-- **BLE test client:** nRF Connect for Android
-- **CSV logger environment:** Python 3 on Windows, using Bleak
+- Simulated temperature and humidity readings using an NTP-synchronized time-based model.
+- Five-sample moving average filtering.
+- BLE communication with Read and Notify characteristics.
+- Configurable sampling interval through BLE.
+- Temperature and humidity threshold alerts.
+- Python-based BLE logger that records readings in a CSV file.
 
-No external temperature or humidity sensor is connected. Consequently, there is no I2C sensor wiring in this version.
+**Note:** No physical temperature or humidity sensor was connected. Both readings are simulated. NTP is used for time synchronization, not for retrieving actual weather data.
 
-## 2. Features
+## BLE Configuration
 
-- Simulated temperature and relative-humidity readings.
-- NTP time synchronization over Wi-Fi.
-- IST (UTC+05:30) time-based daily simulation.
-- Small random variations in generated readings.
-- Five-sample moving-average filtering.
-- Default sampling interval of 2 seconds.
-- BLE sampling-interval write support (1–60 seconds).
-- Custom BLE GATT service.
-- Temperature and humidity Read + Notify characteristics.
-- Sampling interval Read + Write characteristic.
-- Alert Status Read + Notify characteristic.
-- Python BLE client that records readings to CSV.
+**Device Name:** `AQM-Sabesan`
 
-## 3. How the Simulation Works
-
-The ESP32 connects to a Wi-Fi hotspot and requests the current time from NTP servers. The firmware applies the IST offset (UTC+05:30) and uses the current hour, minute, and second to calculate a smooth daily cycle.
-
-The core model is:
-
-- `dailyCycle = cos(2π × (hourOfDay − 14.5) / 24)`
-- `temperature = 26.5 + 5.5 × dailyCycle`
-- `humidity = 75 − 15 × dailyCycle`
-
-Small random variations are then added to both values. The results are constrained to these illustrative ranges:
-
-- Temperature: 21–32 °C
-- Relative humidity: 60–90%
-
-This model makes the simulated temperature warmer around the afternoon and cooler overnight, with humidity moving in the opposite direction. It does **not** fetch weather data from an API and should not be treated as a weather forecast.
-
-BLE starts independently of Wi-Fi. Time-based readings begin after the ESP32 has successfully synchronized its clock through NTP.
-
-## 4. Sampling and Filtering
-
-The default sampling interval is **2 seconds**. Each generated temperature and humidity sample is stored in a five-position circular buffer.
-
-The moving average is calculated from the samples currently collected:
-
-`Moving average = Sum of collected samples / Number of collected samples`
-
-The buffer fills until it contains five samples. After that, each new sample replaces the oldest sample. The filtered temperature and humidity averages are the values published through the BLE characteristics.
-
-The sampling interval can be changed from the BLE client by writing a whole-number value from **1 to 60 seconds** to the Sampling Interval characteristic.
-
-## 5. BLE GATT Configuration
-
-**Advertised device name:** `AQM-Sabesan`
-
-**Custom service UUID:**
-
+**Service UUID:**
 `12345678-1234-1234-1234-1234567890ab`
 
-| Characteristic | UUID | Properties | Value |
-|---|---|---|---|
-| Temperature | `12345678-1234-1234-1234-1234567890ac` | Read, Notify | Filtered temperature in °C |
-| Humidity | `12345678-1234-1234-1234-1234567890ad` | Read, Notify | Filtered relative humidity in % |
-| Sampling Interval | `12345678-1234-1234-1234-1234567890ae` | Read, Write | Sampling interval in seconds |
-| Alert Status | `12345678-1234-1234-1234-1234567890af` | Read, Notify | Alert state as text |
+| Characteristic | UUID | Properties |
+|---|---|---|
+| Temperature | `12345678-1234-1234-1234-1234567890ac` | Read, Notify |
+| Humidity | `12345678-1234-1234-1234-1234567890ad` | Read, Notify |
+| Sampling Interval | `12345678-1234-1234-1234-1234567890ae` | Read, Write |
+| Alert Status | `12345678-1234-1234-1234-1234567890af` | Read, Notify |
 
-The values are sent as readable text strings. The temperature and humidity characteristics notify connected clients when a new filtered reading is produced. The alert characteristic notifies when the alert state changes.
-
-## 6. Alert Logic
-
-The firmware checks the five-sample moving averages against these thresholds:
-
-- Temperature greater than 30.0 °C: `TEMP_HIGH`
-- Humidity greater than 85.0%: `HUMIDITY_HIGH`
-- Both thresholds exceeded: `BOTH_HIGH`
-- Neither threshold exceeded: `NORMAL`
-
-The alert status is available through the Alert Status characteristic. A notification is sent when the status changes, rather than repeatedly sending the same status on every sample.
-
-## 7. Hardware and Wi-Fi Setup
-
-The project uses an ESP32-WROOM-32 development board connected to a computer over USB.
-
-No external sensor wiring is required because both environmental readings are simulated.
-
-Wi-Fi is used for NTP time synchronization. Before compiling the firmware, replace the following placeholders in `firmware/AQM_Sabesan_With_Alerts.ino` with your own 2.4 GHz Wi-Fi hotspot details:
-
-```cpp
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-```
-
-Do not commit real Wi-Fi credentials to a public repository. The ESP32-WROOM-32 supports 2.4 GHz Wi-Fi; configure the hotspot accordingly.
-
-## 8. Build and Run the ESP32 Firmware
-
-1. Install Arduino IDE and the ESP32 board package.
-2. Open `firmware/AQM_Sabesan_With_Alerts.ino`.
-3. Enter your own Wi-Fi SSID and password as described above.
-4. Select **ESP32 Dev Module** (or the matching ESP32-WROOM-32 board option).
-5. Select the serial port for the connected ESP32.
-6. Compile and upload the sketch.
-7. Open Serial Monitor at **115200 baud**.
-8. Wait for Wi-Fi connection and successful NTP clock synchronization.
-9. Once the clock is synchronized, simulated readings begin at the configured interval.
-
-The Serial Monitor prints the IST time, current generated values, moving averages, number of collected samples, and active sampling interval.
-
-## 9. Test with nRF Connect
-
-1. Power the ESP32 and wait for it to start BLE advertising.
-2. Open nRF Connect on an Android phone and scan for `AQM-Sabesan`.
-3. Connect to the device and expand the custom service UUID.
-4. Read the Temperature and Humidity characteristics.
-5. Enable notifications for both characteristics.
-6. Write a new whole-number value (for example, `5`) to the Sampling Interval characteristic.
-7. Read the interval characteristic again and check the Serial Monitor for the updated interval.
-8. Read the Alert Status characteristic and, if desired, enable its notifications.
-
-Some BLE clients display custom characteristics as “Unknown Characteristic” because the UUIDs are application-specific. Match each characteristic using the UUID table in this README.
-
-## 10. Python BLE CSV Logger
-
-The optional Python client uses the [Bleak](https://bleak.readthedocs.io/) library to discover and connect to the ESP32, read the initial values, subscribe to notifications, and log incoming readings.
-
-### Requirements
-
-- Python 3
-- Bluetooth Low Energy support on the computer
-- Bleak Python package
-
-Install Bleak:
-
-```bash
-python -m pip install bleak
-```
-
-Run the logger from the repository root:
-
-```bash
-python python-logger/aqm_ble_data_logger.py
-```
-
-Keep the ESP32 powered on and advertising. Disconnect nRF Connect from the ESP32 before starting the Python logger, because the ESP32 may not accept another BLE connection at the same time.
-
-The script creates `aqm_readings.csv` beside the Python script. The CSV contains:
-
-| Column | Description |
-|---|---|
-| `Timestamp_IST` | Timestamp in Indian Standard Time |
-| `Temperature_C` | Filtered temperature in °C |
-| `Humidity_Percent` | Filtered relative humidity in % |
-| `Alert_Status` | Current alert state |
-
-Press `Ctrl+C` in the terminal to stop the logger.
-
-## 11. Test Evidence
-
-The `screenshots/` folder contains evidence captured during testing, including:
-
-- Temperature and humidity BLE readings and notifications.
-- Sampling interval modification through nRF Connect.
-- Alert characteristic value.
-- Serial Monitor output showing readings and the configured interval.
-
-The Python logger was also run against the ESP32 and produced a CSV file containing timestamped temperature, humidity, and alert-status records.
-
-## 12. Known Limitations
-
-- Temperature and humidity are simulated; no physical I2C sensor is connected or read.
-- The values are illustrative outputs from a time-based mathematical model, not measured environmental conditions or live weather data.
-- Time-based readings require successful Wi-Fi connection and NTP synchronization.
-- The prototype does not include a gas, particulate-matter, or other dedicated air-quality sensor.
-- The Python logger records notifications; sampling interval changes are demonstrated through the BLE client (nRF Connect).
-
-## 13. AI Usage Note
-
-AI coding assistants, including ChatGPT, were used to assist with firmware development, BLE GATT implementation, the time-based simulation, debugging, and the Python CSV logger. The generated code was compiled and tested iteratively using Arduino IDE, the ESP32 Serial Monitor, nRF Connect, and the Python BLE client. Issues encountered during development were investigated and corrected through testing. AI assistance was used transparently; the author is continuing to build a deeper understanding of the embedded programming and BLE concepts in the implementation.
-
-## 14. Repository Structure
+## Project Structure
 
 ```text
-AQM-Sabesan/
+ESP32-Air-Quality-Monitor/
+├── demo/
+│   └── nRF_screen_record.mp4
 ├── firmware/
 │   └── AQM_Sabesan_With_Alerts.ino
 ├── python-logger/
 │   └── aqm_ble_data_logger.py
 ├── screenshots/
 │   ├── 01_BLE_Temperature_Humidity_Alert.png
-│   ├── 02_Sampling_Interval.png   
+│   └── 02_Sampling_Interval.png.jpeg
 └── README.md
 ```
 
----
+## Setup and Testing
 
-**Project:** ESP32 Air Quality Monitor with BLE  
-**Assessment:** Engineering Intern – Air Quality Monitor  
-**Organization:** Aerion Technology Labs Pvt. Ltd.  
-**Author:** Sabesan K
+1. Open the firmware in Arduino IDE.
+2. Enter your Wi-Fi credentials in the firmware.
+3. Select **ESP32 Dev Module** and upload the sketch.
+4. Connect to `AQM-Sabesan` using nRF Connect to inspect readings and test BLE characteristics.
+5. Install the Python dependency:
+
+   `pip install bleak`
+
+6. Run `aqm_ble_data_logger.py` to record readings into a CSV file.
+
+## Demo and Screenshots
+
+**Project Demonstration:** [Watch the screen recording](demo/nRF_screen_record.mp4)
+
+The `screenshots/` folder contains evidence of BLE temperature and humidity readings, alert status, and sampling interval configuration.
+
+## AI Usage Disclosure
+
+I used AI tools extensively throughout this task to generate, explain, troubleshoot, and modify the ESP32 firmware and Python logger. My existing knowledge of Arduino C++, ESP32 BLE programming, and Python is limited, so I relied heavily on AI assistance to develop the implementation. I did not independently develop the complete solution using my own programming knowledge.
+
+I uploaded the firmware to the ESP32 and tested the BLE functionality using nRF Connect. I also ran the Python logger and verified that it recorded readings in a CSV file. I am still learning the underlying concepts and may need assistance understanding or modifying certain parts of the implementation.
