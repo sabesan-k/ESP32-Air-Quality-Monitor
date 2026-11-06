@@ -15,8 +15,8 @@
 // ESP32-WROOM-32 supports 2.4 GHz Wi-Fi, not 5 GHz Wi-Fi.
 // ============================================================
 
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // India Standard Time (IST) = UTC + 5 hours 30 minutes.
 const long GMT_OFFSET_SECONDS = 19800;
